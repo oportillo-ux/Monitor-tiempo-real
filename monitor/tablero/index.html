@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tablero BDB Clientes</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header>
+    <img class="logo" src="logo-bdb.png" alt="BDB Logística">
+    <div class="titulo">
+      <h1>Avance de entregas por cliente</h1>
+      <span id="meta">Cargando…</span>
+    </div>
+    <button id="actualizar" type="button">↻ Actualizar ahora</button>
+  </header>
+  <main>
+    <section id="clientes" class="cards" aria-label="Clientes"></section>
+    <section class="drivers">
+      <div class="bar-row">
+        <h2>Drivers</h2>
+        <input id="filtro" placeholder="Filtrar por cliente, estación, ruta o driver" aria-label="Filtrar">
+        <select id="cliente" aria-label="Cliente"><option value="">Todos los clientes</option></select>
+        <select id="orden" aria-label="Orden">
+          <option value="avance">Menor avance de entregas primero</option>
+          <option value="ruta">Por cliente y ruta</option>
+        </select>
+      </div>
+      <div class="tabla">
+        <table>
+          <thead><tr>
+            <th>Cliente</th><th>Estación</th><th>Ruta</th><th>Driver</th><th>Estado</th>
+            <th>Avance de entregas</th><th>Paradas</th><th title="Entregas hechas desde el corte anterior">Δ entregas 15 min</th>
+          </tr></thead>
+          <tbody id="filas"></tbody>
+        </table>
+      </div>
+    </section>
+    <p id="vacio" class="vacio" hidden>Todavía no hay datos. El primer ciclo tarda unos minutos en recorrer a todos los clientes.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Datos locales del monitor: sesiones del navegador, cortes y usuarios de clientes
+monitor/perfiles/
+monitor/datos/
+monitor/clientes.json
+__pycache__/
