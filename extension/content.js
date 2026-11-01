@@ -209,7 +209,7 @@
     const t = snap ? snap.totals : null;
     const prevBy = new Map((prev ? prev.routes : []).map((r) => [r.route, r]));
     const rows = snap
-      ? [...snap.routes].sort((a, b) => (pct(a.stopsDone, a.stopsTotal) ?? -1) - (pct(b.stopsDone, b.stopsTotal) ?? -1))
+      ? [...snap.routes].sort((a, b) => (pct(a.delDone, a.delTotal) ?? -1) - (pct(b.delDone, b.delTotal) ?? -1))
       : [];
     const body = state.minimized
       ? ''
@@ -217,21 +217,21 @@
       ${msg ? `<div class="msg">${esc(msg)}</div>` : ''}
       ${t ? `
       <div class="kpis">
-        <div><label>Paradas</label><b style="color:${color(t.stopsPct)}">${fmt(t.stopsPct)}</b><small>${t.stopsDone}/${t.stopsTotal}</small>${bar(t.stopsPct)}</div>
-        <div><label>Entregas</label><b style="color:${color(t.delPct)}">${fmt(t.delPct)}</b><small>${t.delDone}/${t.delTotal}</small>${bar(t.delPct)}</div>
+        <div><label>Avance de entregas</label><b style="color:${color(t.delPct)}">${fmt(t.delPct)}</b><small>${t.delDone}/${t.delTotal} entregas</small>${bar(t.delPct)}</div>
+        <div><label>Paradas</label><b class="info">${t.stopsDone}/${t.stopsTotal}</b><small>informativo</small></div>
         <div><label>Rutas</label><b>${t.routes}</b><small>${t.notDeparted} sin salir</small></div>
       </div>
       <div class="tbl"><table>
-        <thead><tr><th>Ruta</th><th>Driver</th><th>Paradas</th><th>Entregas</th><th title="Paradas hechas desde el corte anterior">Δ15m</th></tr></thead>
+        <thead><tr><th>Ruta</th><th>Driver</th><th>Entregas</th><th>Paradas</th><th title="Entregas hechas desde el corte anterior">Δ15m</th></tr></thead>
         <tbody>${rows.map((r) => {
-          const sp = pct(r.stopsDone, r.stopsTotal), dp = pct(r.delDone, r.delTotal);
+          const dp = pct(r.delDone, r.delTotal);
           const p = prevBy.get(r.route);
-          const delta = p ? r.stopsDone - p.stopsDone : null;
+          const delta = p ? r.delDone - p.delDone : null;
           return `<tr>
             <td><b>${esc(r.route)}</b></td>
             <td title="${esc(r.status)}">${esc(r.drivers.join(' / ') || '—')}${r.notDeparted ? ' <em>sin salir</em>' : ''}</td>
-            <td><span style="color:${color(sp)}">${fmt(sp)}</span><small>${r.stopsDone}/${r.stopsTotal}</small></td>
             <td><span style="color:${color(dp)}">${fmt(dp)}</span><small>${r.delDone}/${r.delTotal}</small></td>
+            <td><small>${r.stopsDone}/${r.stopsTotal}</small></td>
             <td>${delta == null ? '—' : (delta > 0 ? '+' : '') + delta}</td>
           </tr>`;
         }).join('')}</tbody>
@@ -251,6 +251,7 @@
         .kpis { display:grid; grid-template-columns:1fr 1fr .8fr; gap:8px; padding:10px; border-bottom:1px solid #e6ebef; }
         .kpis label { display:block; color:#5b6b7a; font-size:11px; }
         .kpis b { font-size:20px; margin-right:6px; }
+        .kpis b.info { font-size:15px; color:#5b6b7a; font-weight:600; }
         .kpis small, td small { color:#6b7a88; display:block; font-size:10.5px; }
         .bar { height:5px; background:#edf1f4; border-radius:3px; margin-top:4px; overflow:hidden; }
         .bar span { display:block; height:100%; }

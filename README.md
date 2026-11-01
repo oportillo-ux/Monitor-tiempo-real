@@ -18,9 +18,9 @@ muestra el % de avance **por driver** y **por estación**.
    vuelve a la que tenías elegida. Mientras recorre, no uses esa pestaña.
    Con el botón **Todas / Solo esta** del panel puedes leer solo la estación de la pestaña.
 2. Cuando cargan las rutas aparece un panel abajo a la derecha con:
-   - % de paradas y % de entregas de la estación,
+   - % de avance de entregas de la estación (las paradas se muestran solo como dato informativo),
    - la tabla de drivers ordenada del menor avance al mayor,
-   - **Δ15m**: paradas hechas desde el corte anterior.
+   - **Δ15m**: entregas hechas desde el corte anterior.
 3. Cada 15 minutos la extensión recarga la pestaña (pasándola al día de hoy si quedó
    en un día anterior) y toma un corte nuevo de todas las estaciones.
    **No cierres las pestañas del portal** y mantén la sesión iniciada.

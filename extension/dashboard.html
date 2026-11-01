@@ -19,13 +19,12 @@
         <h2>Drivers</h2>
         <input id="filter" placeholder="Filtrar por ruta, driver o estación">
         <select id="sort">
-          <option value="stops">Menor % de paradas primero</option>
           <option value="del">Menor % de entregas primero</option>
           <option value="route">Por ruta</option>
         </select>
       </div>
       <table>
-        <thead><tr><th>Estación</th><th>Ruta</th><th>Driver</th><th>Estado</th><th>Paradas</th><th>Entregas</th><th title="Paradas hechas desde el corte anterior">Δ 15 min</th></tr></thead>
+        <thead><tr><th>Estación</th><th>Ruta</th><th>Driver</th><th>Estado</th><th>Avance de entregas</th><th>Paradas</th><th title="Entregas hechas desde el corte anterior">Δ entregas 15 min</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </section>

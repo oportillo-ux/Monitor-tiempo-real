@@ -12,8 +12,9 @@ const $ = (id) => document.getElementById(id);
 let data = { snaps: [], prevs: {}, hists: {} };
 
 try {
-  $('sort').value = localStorage.getItem('bdb-sort') || 'stops';
+  $('sort').value = localStorage.getItem('bdb-sort') || 'del';
 } catch {}
+if (!$('sort').value) $('sort').value = 'del'; // un orden guardado que ya no existe
 
 async function load() {
   const follow = globalThis.BDB_STATIONS || [];
@@ -60,10 +61,9 @@ function render() {
     }
     return `<div class="card">
       <h3>${esc(s.station)} <span class="ts ${stale ? 'stale' : ''}" title="${stale ? 'Sin corte reciente: revisa que la pestaña del portal siga abierta y con sesión' : ''}">corte ${hhmm(s.ts)}</span></h3>
-      <div class="kpi"><div class="top"><label>Paradas</label><span><b style="color:${color(t.stopsPct)}">${fmt(t.stopsPct)}</b>${trend(s.station, 'stopsPct')}</span></div>
-        ${track(t.stopsPct)}<div class="sub" style="font-size:11px;color:var(--muted)">${t.stopsDone} de ${t.stopsTotal}</div></div>
-      <div class="kpi"><div class="top"><label>Entregas</label><span><b style="color:${color(t.delPct)}">${fmt(t.delPct)}</b>${trend(s.station, 'delPct')}</span></div>
-        ${track(t.delPct)}<div class="sub" style="font-size:11px;color:var(--muted)">${t.delDone} de ${t.delTotal}</div></div>
+      <div class="kpi"><div class="top"><label>Avance de entregas</label><span><b style="color:${color(t.delPct)}">${fmt(t.delPct)}</b>${trend(s.station, 'delPct')}</span></div>
+        ${track(t.delPct)}<div class="sub" style="font-size:11px;color:var(--muted)">${t.delDone} de ${t.delTotal} entregas</div></div>
+      <div class="foot">Paradas: ${t.stopsDone} de ${t.stopsTotal}</div>
       <div class="foot">${t.routes} rutas · ${t.notDeparted} sin salir</div>
     </div>`;
   }).join('');
@@ -75,21 +75,21 @@ function render() {
     return s.routes.map((r) => ({ ...r, station: s.station, prev: prevBy.get(r.route) }));
   }).filter((r) => !q || `${r.station} ${r.route} ${r.drivers.join(' ')}`.toLowerCase().includes(q));
 
-  const key = sort === 'del' ? (r) => pct(r.delDone, r.delTotal) ?? -1 : (r) => pct(r.stopsDone, r.stopsTotal) ?? -1;
+  const key = (r) => pct(r.delDone, r.delTotal) ?? -1;
   rows.sort(sort === 'route'
     ? (a, b) => a.station.localeCompare(b.station) || a.route.localeCompare(b.route, undefined, { numeric: true })
     : (a, b) => key(a) - key(b));
 
   $('rows').innerHTML = rows.map((r) => {
-    const sp = pct(r.stopsDone, r.stopsTotal), dp = pct(r.delDone, r.delTotal);
-    const delta = r.prev ? r.stopsDone - r.prev.stopsDone : null;
+    const dp = pct(r.delDone, r.delTotal);
+    const delta = r.prev ? r.delDone - r.prev.delDone : null;
     return `<tr>
       <td>${esc(r.station)}</td>
       <td><b>${esc(r.route)}</b></td>
       <td>${esc(r.drivers.join(' / ') || '—')}</td>
       <td class="status">${r.notDeparted ? '<span class="tag">Sin salir</span> ' : ''}${esc(r.status.replace(/not departed\s*\|?/i, ''))}</td>
-      <td><b style="color:${color(sp)}">${fmt(sp)}</b> <span class="sub">${r.stopsDone}/${r.stopsTotal}</span>${track(sp)}</td>
       <td><b style="color:${color(dp)}">${fmt(dp)}</b> <span class="sub">${r.delDone}/${r.delTotal}</span>${track(dp)}</td>
+      <td class="sub">${r.stopsDone}/${r.stopsTotal}</td>
       <td>${delta == null ? '—' : (delta > 0 ? '+' : '') + delta}</td>
     </tr>`;
   }).join('');
