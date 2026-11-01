@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Tablero BDB Rutas</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header>
+    <h1>Avance de rutas</h1>
+    <span id="meta"></span>
+    <button id="refresh" title="Recargar ahora todas las pestañas del portal">↻ Actualizar ahora</button>
+  </header>
+  <main>
+    <section id="stations" class="cards"></section>
+    <section class="drivers">
+      <div class="bar-row">
+        <h2>Drivers</h2>
+        <input id="filter" placeholder="Filtrar por ruta, driver o estación">
+        <select id="sort">
+          <option value="stops">Menor % de paradas primero</option>
+          <option value="del">Menor % de entregas primero</option>
+          <option value="route">Por ruta</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>Estación</th><th>Ruta</th><th>Driver</th><th>Estado</th><th>Paradas</th><th>Entregas</th><th title="Paradas hechas desde el corte anterior">Δ 15 min</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+    <p id="empty" class="empty" hidden>Aún no hay datos. Abre el portal de Amazon Logistics en la vista de rutas; la extensión lee las rutas en cuanto cargan.</p>
+  </main>
+  <script src="dashboard.js"></script>
+</body>
+</html>

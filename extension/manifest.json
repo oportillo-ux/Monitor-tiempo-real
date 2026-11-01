@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "BDB Monitor de Rutas",
+  "version": "1.0.0",
+  "description": "Lee el avance de rutas del portal de Amazon Logistics cada 15 minutos y muestra el % por driver y por estación.",
+  "permissions": ["storage", "alarms", "tabs"],
+  "host_permissions": [
+    "https://logistics.amazon.com/*",
+    "https://logistics.amazon.com.mx/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://logistics.amazon.com/*",
+        "https://logistics.amazon.com.mx/*"
+      ],
+      "js": ["parser.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_title": "Abrir tablero BDB" }
+}

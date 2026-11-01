@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prueba del lector</title>
+<style>
+  body { font: 13px system-ui, sans-serif; }
+  .row { display: flex; gap: 20px; padding: 8px; border-bottom: 1px solid #ccc; width: 780px; }
+  .route a { font-weight: 700; color: #0a5c8a; }
+  .name { width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  pre { background: #f4f4f4; padding: 10px; }
+</style>
+</head>
+<body>
+<h3>Filas simuladas (texto igual al portal)</h3>
+<div id="list">
+  <div class="row">
+    <div class="route"><a>CV28</a><div>6h 56m</div><div>11:30am</div></div>
+    <div><div class="name">Ismael Ruiz Huerta</div><div class="name">Sandra Rodriguez Martinez</div></div>
+    <div><div>Not departed | App sign in: 10:19am</div><div><span>Time left on shift not available</span> <span>| Avg: 0 stops/hr</span></div></div>
+    <div><div class="bar"></div><span><b>2/116</b> stops</span> <span><b>1/144</b> deliveries</span></div>
+  </div>
+  <div class="row">
+    <div class="route"><a>CV29</a><div>6h 14m</div><div>11:30am</div></div>
+    <div><div class="name">Brayan Encinas Valenzuela</div></div>
+    <div><div>Not departed | App sign in: 10:42am</div></div>
+    <div><span><b>0/96</b> stops</span> <span><b>0/118</b> deliveries</span></div>
+  </div>
+  <div class="row">
+    <div class="route"><a>CV30</a><div>7h 16m</div><div>11:30am</div></div>
+    <div><div class="name">Brayan Sanchez lira</div></div>
+    <div><div><span>Time left on shift not available</span> <span>| Avg: 0 stops/hr</span></div></div>
+    <div><span><b>0/136</b> stops</span> <span><b>0/166</b> deliveries</span></div>
+  </div>
+  <div class="row">
+    <div class="route"><a>CV32</a><div>7h 31m</div><div>11:30am</div></div>
+    <div><div class="name">Santiago Ramirez Lopez</div></div>
+    <div><div>Not departed | App sign in: 10:43am</div></div>
+    <div><span><b>0/150</b> stops</span> <span><b>0/207</b> deliveries</span></div>
+  </div>
+</div>
+<h3>Resultado</h3>
+<pre id="out"></pre>
+<script src="../extension/parser.js"></script>
+<script>
+  const res = BDBParser.parsePage(document.getElementById('list'));
+  const expect = [
+    ['CV28', 2, 116, 1, 144, 2], ['CV29', 0, 96, 0, 118, 1],
+    ['CV30', 0, 136, 0, 166, 1], ['CV32', 0, 150, 0, 207, 1],
+  ];
+  const fails = expect.filter(([rt, sd, st, dd, dt, nd]) => {
+    const r = res.find((x) => x.route === rt);
+    return !r || r.stopsDone !== sd || r.stopsTotal !== st || r.delDone !== dd || r.delTotal !== dt || r.drivers.length !== nd;
+  });
+  document.getElementById('out').textContent =
+    (fails.length || res.length !== 4 ? 'FALLA: ' + JSON.stringify(fails) : 'OK: 4 rutas leídas correctamente') +
+    '\n\n' + JSON.stringify(res, null, 2);
+</script>
+</body>
+</html>
