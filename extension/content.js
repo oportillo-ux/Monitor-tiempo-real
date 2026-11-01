@@ -32,6 +32,73 @@
     return 'SIN-ESTACION';
   }
 
+  // ---------- Selector de estación del portal ----------
+  const areaId = () => new URLSearchParams(location.search).get('serviceAreaId');
+  const codeOf = (label) => (label.match(/\(([A-Z]{3}\d{1,2})\)/) || label.match(/^([A-Z]{3}\d{1,2})\b/) || [null, label])[1];
+  const stationOptions = () => [...document.querySelectorAll('[role="option"]')].filter((o) => !o.disabled);
+
+  async function openStationList() {
+    const inp = document.querySelector('input[role="combobox"]');
+    if (!inp) return [];
+    if (!stationOptions().length) {
+      for (const t of ['mousedown', 'mouseup', 'click']) inp.dispatchEvent(new MouseEvent(t, { bubbles: true }));
+    }
+    for (let i = 0; i < 15 && !stationOptions().length; i++) await sleep(200);
+    return stationOptions();
+  }
+
+  // Nombres de todas las estaciones del selector, en su orden.
+  async function listStations() {
+    const opts = await openStationList();
+    const labels = opts.map((o) => o.getAttribute('aria-label') || o.textContent.trim());
+    const current = opts.find((o) => o.getAttribute('aria-selected') === 'true');
+    if (current) current.click(); // cierra la lista sin cambiar de estación
+    await sleep(300);
+    return { labels, current: current ? current.getAttribute('aria-label') : null };
+  }
+
+  async function selectStation(label) {
+    const before = areaId();
+    const opt = (await openStationList()).find((o) => o.getAttribute('aria-label') === label);
+    if (!opt) return false;
+    const wasSelected = opt.getAttribute('aria-selected') === 'true';
+    opt.click();
+    if (wasSelected) return true;
+    for (let i = 0; i < 50 && areaId() === before; i++) await sleep(200);
+    return areaId() !== before;
+  }
+
+  // Número que el portal muestra como "N Total" en el recuadro de rutas.
+  function routesTotal() {
+    for (const el of document.querySelectorAll('div, span, p')) {
+      if (el.children.length || el.textContent.trim() !== 'Total') continue;
+      for (let p = el.parentElement, i = 0; p && i < 3; p = p.parentElement, i++) {
+        const m = (p.innerText || '').trim().match(/^(\d+)\s*\n?\s*Total\b/);
+        if (m) return +m[1];
+      }
+    }
+    return null;
+  }
+
+  // Espera a que la estación recién elegida pinte sus rutas (o confirme que no tiene).
+  async function waitStationData(prevSig) {
+    const t0 = Date.now();
+    let last = null;
+    while (Date.now() - t0 < 45000) {
+      await sleep(1500);
+      const total = routesTotal();
+      const rows = findRows();
+      const sig = rows.map((r) => (r.innerText || '').split('\n')[0]).join(',');
+      const cur = total + '|' + sig;
+      const ready = Date.now() - t0 > 3000 && total != null && (total === 0 ? rows.length === 0 : rows.length > 0 && sig !== prevSig);
+      if (ready && cur === last) return true;
+      last = ready ? cur : null;
+    }
+    return false;
+  }
+
+  const rowsSig = () => findRows().map((r) => (r.innerText || '').split('\n')[0]).join(',');
+
   // ---------- Lectura ----------
   function scrollParent(el) {
     for (let p = el && el.parentElement; p && p !== document.body; p = p.parentElement) {
@@ -66,11 +133,13 @@
   }
 
   // Espera hasta 2 min a que el portal pinte las rutas y el número se estabilice.
+  // Devuelve true también si la estación muestra "0 Total" (no tiene rutas hoy).
   async function waitForRows() {
     let last = -1;
     for (let i = 0; i < 40; i++) {
       const n = findRows().length;
-      if (n > 0 && n === last) return true;
+      const total = routesTotal();
+      if (n === last && (n > 0 || (total === 0 && i >= 2))) return true;
       last = n;
       await sleep(3000);
     }
@@ -134,6 +203,7 @@
   async function render(snap, prev, msg) {
     ensurePanel();
     const next = await chrome.runtime.sendMessage({ type: 'nextRefresh' }).catch(() => null);
+    const { mode = 'all' } = await chrome.storage.local.get('mode');
     const t = snap ? snap.totals : null;
     const prevBy = new Map((prev ? prev.routes : []).map((r) => [r.route, r]));
     const rows = snap
@@ -192,6 +262,7 @@
         <div class="hd">
           <span class="st" id="st" title="Clic para cambiar el nombre de la estación">${esc(snap ? snap.station : detectStation())}</span>
           <span class="meta">${snap ? 'Corte ' + new Date(snap.ts).toLocaleTimeString() : 'Leyendo…'}${next ? ' · próximo ' + new Date(next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+          <button id="md" title="Cambiar entre leer todas las estaciones del selector o solo la de esta pestaña">${mode === 'all' ? 'Todas' : 'Solo esta'}</button>
           <button id="rf" title="Recargar ahora todas las estaciones">↻</button>
           <button id="db" title="Tablero de todas las estaciones">Tablero</button>
           <button id="mn">${state.minimized ? '▢' : '–'}</button>
@@ -205,6 +276,10 @@
       render(snap, prev, msg);
     };
     shadow.getElementById('db').onclick = () => chrome.runtime.sendMessage({ type: 'openDashboard' });
+    shadow.getElementById('md').onclick = async () => {
+      await chrome.storage.local.set({ mode: mode === 'all' ? 'single' : 'all' });
+      render(snap, prev, msg);
+    };
     shadow.getElementById('rf').onclick = () => chrome.runtime.sendMessage({ type: 'refreshAll' });
     shadow.getElementById('st').onclick = () => {
       const v = prompt('Nombre de la estación para esta pestaña:', snap ? snap.station : detectStation());
@@ -215,14 +290,86 @@
   }
 
   // ---------- Ciclo ----------
-  async function run() {
-    if (!(await waitForRows())) return; // página sin rutas: no se muestra nada
+  let busy = false;
+
+  async function captureCurrent() {
     const station = detectStation();
     const routes = await collectAll();
     if (!routes.length) return;
     const { snap, prev } = await save(station, routes);
     render(snap, prev);
   }
+
+  // El avance del recorrido se guarda en la pestaña: si el portal recarga a
+  // mitad del ciclo, se continúa en la misma estación (máx. 2 intentos cada una).
+  const CYCLE_KEY = 'bdb-cycle';
+  function loadCycle() {
+    try {
+      const c = JSON.parse(sessionStorage.getItem(CYCLE_KEY));
+      return c && Date.now() - c.started < 10 * 60 * 1000 ? c : null;
+    } catch { return null; }
+  }
+  function storeCycle(c) {
+    try { c ? sessionStorage.setItem(CYCLE_KEY, JSON.stringify(c)) : sessionStorage.removeItem(CYCLE_KEY); } catch {}
+  }
+
+  // Recorre todas las estaciones del selector y vuelve a la que estaba elegida.
+  async function cycleAll() {
+    let c = loadCycle();
+    const listed = await listStations();
+    let at = listed.current;
+    if (!c) {
+      if (!listed.labels.length) return captureCurrent();
+      c = { labels: listed.labels, current: listed.current, i: 0, tries: 0, started: Date.now() };
+    }
+    for (; c.i < c.labels.length; c.i++, c.tries = 0) {
+      const label = c.labels[c.i];
+      if (++c.tries > 2) continue;
+      storeCycle(c);
+      render(null, null, `Recorriendo estaciones ${c.i + 1}/${c.labels.length}: ${codeOf(label)}…`);
+      if (label !== at) {
+        const sig = rowsSig();
+        if (!(await selectStation(label))) continue;
+        at = label;
+        await waitStationData(sig);
+      }
+      const routes = routesTotal() === 0 ? [] : await collectAll();
+      await save(codeOf(label), routes);
+    }
+    storeCycle(null);
+    if (c.current && at !== c.current) {
+      const sig = rowsSig();
+      await selectStation(c.current);
+      await waitStationData(sig);
+    }
+    const code = c.current ? codeOf(c.current) : detectStation();
+    const got = await chrome.storage.local.get(['snap:' + code, 'prev:' + code]);
+    render(got['snap:' + code] || null, got['prev:' + code] || null);
+  }
+
+  async function run() {
+    if (busy) return;
+    busy = true;
+    try {
+      if (!(await waitForRows()) && routesTotal() == null) return; // no es la vista de rutas
+      const { mode = 'all' } = await chrome.storage.local.get('mode');
+      const lead = mode === 'all' && (await chrome.runtime.sendMessage({ type: 'claimCycle' }).catch(() => false));
+      if (lead) await cycleAll();
+      else await captureCurrent();
+    } finally {
+      busy = false;
+    }
+  }
+
+  // Si la persona cambia de estación a mano, se toma el corte de la nueva.
+  let lastArea = areaId();
+  setInterval(() => {
+    if (busy || areaId() === lastArea) return;
+    lastArea = areaId();
+    try { sessionStorage.removeItem('bdb-station'); } catch {}
+    busy = true;
+    waitStationData(null).then(captureCurrent).finally(() => { busy = false; });
+  }, 3000);
 
   run();
 })();

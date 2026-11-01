@@ -17,16 +17,42 @@ async function getTabs() {
   return tabs;
 }
 
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Recarga cada pestaña; si quedó en un día anterior, la mueve al día de hoy.
 async function reloadRegisteredTabs() {
   const tabs = await getTabs();
   for (const id of Object.keys(tabs)) {
     try {
-      await chrome.tabs.reload(Number(id));
+      const tab = await chrome.tabs.get(Number(id));
+      const url = new URL(tab.url);
+      if (url.searchParams.has('selectedDay') && url.searchParams.get('selectedDay') !== today()) {
+        url.searchParams.set('selectedDay', today());
+        await chrome.tabs.update(tab.id, { url: url.toString() });
+      } else {
+        await chrome.tabs.reload(tab.id);
+      }
     } catch {
       delete tabs[id];
     }
   }
   await chrome.storage.local.set({ tabs });
+}
+
+// Solo una pestaña recorre todas las estaciones; las demás leen solo la suya.
+async function claimCycle(tabId) {
+  const { leader } = await chrome.storage.local.get('leader');
+  if (leader && leader !== tabId) {
+    try {
+      await chrome.tabs.get(leader);
+      return false;
+    } catch {}
+  }
+  await chrome.storage.local.set({ leader: tabId });
+  return true;
 }
 
 chrome.alarms.onAlarm.addListener((a) => {
@@ -51,6 +77,10 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       tabs[sender.tab.id] = msg.station;
       chrome.storage.local.set({ tabs }).then(() => reply(true));
     });
+    return true;
+  }
+  if (msg.type === 'claimCycle' && sender.tab) {
+    claimCycle(sender.tab.id).then(reply);
     return true;
   }
   if (msg.type === 'nextRefresh') {

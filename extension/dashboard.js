@@ -25,7 +25,8 @@ async function load() {
     data.prevs[s] = got['prev:' + s] || null;
     data.hists[s] = got['hist:' + s] || [];
   }
-  data.snaps.sort((a, b) => a.station.localeCompare(b.station));
+  // Primero las estaciones con rutas; las vacías al final.
+  data.snaps.sort((a, b) => (b.totals.routes > 0) - (a.totals.routes > 0) || a.station.localeCompare(b.station));
   render();
 }
 
@@ -50,6 +51,12 @@ function render() {
   $('stations').innerHTML = data.snaps.map((s) => {
     const t = s.totals;
     const stale = now - s.ts > STALE_MS;
+    if (!t.routes) {
+      return `<div class="card empty-card">
+      <h3>${esc(s.station)} <span class="ts ${stale ? 'stale' : ''}">corte ${hhmm(s.ts)}</span></h3>
+      <div class="foot">Sin rutas hoy</div>
+    </div>`;
+    }
     return `<div class="card">
       <h3>${esc(s.station)} <span class="ts ${stale ? 'stale' : ''}" title="${stale ? 'Sin corte reciente: revisa que la pestaña del portal siga abierta y con sesión' : ''}">corte ${hhmm(s.ts)}</span></h3>
       <div class="kpi"><div class="top"><label>Paradas</label><span><b style="color:${color(t.stopsPct)}">${fmt(t.stopsPct)}</b>${trend(s.station, 'stopsPct')}</span></div>
