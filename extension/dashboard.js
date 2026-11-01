@@ -16,7 +16,8 @@ try {
 } catch {}
 
 async function load() {
-  const { stations = [] } = await chrome.storage.local.get('stations');
+  const follow = globalThis.BDB_STATIONS || [];
+  const stations = ((await chrome.storage.local.get('stations')).stations || []).filter((s) => !follow.length || follow.includes(s));
   const keys = stations.flatMap((s) => ['snap:' + s, 'prev:' + s, 'hist:' + s]);
   const got = keys.length ? await chrome.storage.local.get(keys) : {};
   data = { snaps: [], prevs: {}, hists: {} };

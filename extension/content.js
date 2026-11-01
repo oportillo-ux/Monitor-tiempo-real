@@ -7,6 +7,8 @@
   const { parsePage, findRows } = globalThis.BDBParser;
   const STATION_RE = /^[A-Z]{3}\d{1,2}$/;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const FOLLOW = globalThis.BDB_STATIONS || [];
+  const followed = (code) => !FOLLOW.length || FOLLOW.includes(code);
 
   // ---------- Estación ----------
   function detectStation() {
@@ -294,6 +296,7 @@
 
   async function captureCurrent() {
     const station = detectStation();
+    if (!followed(station)) return;
     const routes = await collectAll();
     if (!routes.length) return;
     const { snap, prev } = await save(station, routes);
@@ -319,8 +322,9 @@
     const listed = await listStations();
     let at = listed.current;
     if (!c) {
-      if (!listed.labels.length) return captureCurrent();
-      c = { labels: listed.labels, current: listed.current, i: 0, tries: 0, started: Date.now() };
+      const labels = listed.labels.filter((l) => followed(codeOf(l)));
+      if (!labels.length) return captureCurrent();
+      c = { labels, current: listed.current, i: 0, tries: 0, started: Date.now() };
     }
     for (; c.i < c.labels.length; c.i++, c.tries = 0) {
       const label = c.labels[c.i];

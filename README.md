@@ -27,6 +27,12 @@ muestra el % de avance **por driver** y **por estación**.
 4. El botón **Tablero** (o el ícono de la extensión) abre la vista consolidada
    de todas las estaciones, con la tendencia de los últimos 15 min.
 
+### Qué estaciones se siguen
+
+La lista está en `extension/config.js` (hoy: DMT2, DMT4 y DMT6). Para seguir otras,
+edita esa lista y recarga la extensión; con la lista vacía (`[]`) se siguen todas
+las estaciones del selector del portal.
+
 ### Nombre de la estación
 
 La extensión intenta detectar el código de estación (por ejemplo `DMX4`) en la página.

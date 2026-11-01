@@ -15,7 +15,7 @@
         "https://logistics.amazon.com/*",
         "https://logistics.amazon.com.mx/*"
       ],
-      "js": ["parser.js", "content.js"],
+      "js": ["config.js", "parser.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
