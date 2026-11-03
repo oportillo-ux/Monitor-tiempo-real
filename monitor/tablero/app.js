@@ -9,10 +9,13 @@ const track = (v) => `<div class="track"><span style="width:${Math.min(100, v ||
 const hhmm = (s) => new Date(s * 1000).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
 let estado = null;
+// Estaciones elegidas en la botonera; vacío = todas.
+let elegidas = new Set();
 
 try {
   const o = localStorage.getItem('bdb-orden');
   if (o) $('orden').value = o;
+  elegidas = new Set(JSON.parse(localStorage.getItem('bdb-estaciones') || '[]'));
 } catch {}
 if (!$('orden').value) $('orden').value = 'avance';
 
@@ -37,17 +40,38 @@ function clientesOrdenados() {
   return orden.filter((n) => estado.clientes[n]).map((n) => ({ nombre: n, ...estado.clientes[n] }));
 }
 
+function guardarEstaciones() {
+  try { localStorage.setItem('bdb-estaciones', JSON.stringify([...elegidas])); } catch {}
+}
+
+function pintarBotonera(todos) {
+  const codigos = [...new Set(todos.flatMap((c) => (c.estaciones || []).map((e) => e.codigo)))]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  // Olvida estaciones que ya no aparecen en los datos.
+  if (estado) for (const c of elegidas) if (!codigos.includes(c)) elegidas.delete(c);
+  const nav = $('estaciones');
+  nav.hidden = codigos.length < 2;
+  nav.innerHTML = `<span class="etq">Estaciones</span>`
+    + `<button type="button" data-est="" aria-pressed="${elegidas.size === 0}">Todas</button>`
+    + codigos.map((c) => `<button type="button" data-est="${esc(c)}" aria-pressed="${elegidas.has(c)}">${esc(c)}</button>`).join('');
+}
+
 function pintar() {
   const ahora = Date.now();
-  const clientes = clientesOrdenados();
-  $('vacio').hidden = clientes.length > 0;
+  const todos = clientesOrdenados();
+  pintarBotonera(todos);
+  // Con estaciones elegidas, cada cliente muestra solo esas y se ocultan los que no tienen ninguna.
+  const clientes = elegidas.size === 0 ? todos : todos
+    .map((c) => ({ ...c, estaciones: (c.estaciones || []).filter((e) => elegidas.has(e.codigo)) }))
+    .filter((c) => c.estaciones.length > 0);
+  $('vacio').hidden = todos.length > 0;
 
   if (estado) {
     const partes = [];
     if (estado.actualizando) partes.push('Actualizando…');
     else if (estado.ciclo_fin) partes.push('Actualizado ' + hhmm(estado.ciclo_fin));
     if (estado.proximo && !estado.actualizando) partes.push('próximo ' + hhmm(estado.proximo));
-    partes.push(clientes.length + ' cliente(s)');
+    partes.push(todos.length + ' cliente(s)');
     $('meta').textContent = partes.join(' · ');
   }
 
@@ -105,6 +129,17 @@ function pintar() {
   }).join('');
 }
 
+// Clic en una estación la suma o la quita; "Todas" limpia la selección.
+$('estaciones').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-est]');
+  if (!b) return;
+  const c = b.dataset.est;
+  if (!c) elegidas.clear();
+  else if (elegidas.has(c)) elegidas.delete(c);
+  else elegidas.add(c);
+  guardarEstaciones();
+  pintar();
+});
 $('filtro').addEventListener('input', pintar);
 $('cliente').addEventListener('change', pintar);
 $('orden').addEventListener('change', () => {
